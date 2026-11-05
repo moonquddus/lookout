@@ -1,0 +1,6 @@
+#!/bin/sh
+echo "$*" >> "$STUB_RECORD"
+case "$1 $2" in
+  "pane list") echo "{\"result\":{\"panes\":[$STUB_LIVE]}}" ;;
+  "plugin pane") n=$(wc -l < "$STUB_RECORD" | tr -d ' '); echo "{\"result\":{\"plugin_pane\":{\"pane\":{\"pane_id\":\"w1:p$n\"}}}}" ;;
+esac

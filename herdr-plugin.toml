@@ -1,0 +1,12 @@
+id = "lookout"
+name = "Lookout"
+version = "0.1.0"
+min_herdr_version = "0.9.5"
+description = "Show Claude Code subagents and background shells in their own panes"
+platforms = ["macos", "linux"]
+
+[[panes]]
+id = "view"
+title = "Lookout"
+placement = "split"
+command = ["python3", "plugin/view.py"]
