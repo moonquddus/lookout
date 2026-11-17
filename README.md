@@ -38,7 +38,7 @@ To use another Claude Code profile directory, pass `--claude-dir`. The default i
 
 Restart Claude Code sessions to load the hooks. The hooks do nothing outside Herdr desktop.
 
-To remove it, run `./uninstall.sh`. It takes the same `--claude-dir` argument.
+To remove it, run `./uninstall.sh`. It takes the same `--claude-dir` argument. It removes the Herdr mod and layout only when no other `~/.claude*` profile still uses the hooks.
 
 ## Tests
 
