@@ -13,13 +13,13 @@ def slug(text, length):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:length] or "task"
 
 
-def tasks_dir(event):
+def task_output(event, task):
     project = Path(event["transcript_path"]).parent.name
     roots = [os.environ.get("CLAUDE_CODE_TMPDIR"), tempfile.gettempdir(), "/private/tmp", "/tmp"]
-    candidates = [
-        Path(root) / f"claude-{os.getuid()}" / project / event["session_id"] / "tasks" for root in roots if root
-    ]
-    return next((path for path in candidates if path.is_dir()), candidates[0])
+    projects = [Path(root) / f"claude-{os.getuid()}" / project for root in roots if root]
+    base = next((path for path in projects if path.is_dir()), projects[0])
+    # A resumed session keeps writing tasks under the session it started as, so match any session.
+    return base / "*" / "tasks" / f"{task}.output"
 
 
 def start(event, kind, key, path, title):
@@ -69,7 +69,7 @@ def main():
                 event,
                 "shell",
                 task,
-                tasks_dir(event) / f"{task}.output",
+                task_output(event, task),
                 tool_input.get("description") or tool_input.get("command", ""),
             )
     elif name == "PostToolUse" and event.get("tool_name") in ("TaskStop", "KillShell"):

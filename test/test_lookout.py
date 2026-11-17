@@ -64,6 +64,15 @@ class FollowTest(unittest.TestCase):
         path.unlink()
         self.assertTrue(tail.gone())
 
+    def test_shell_finds_output_in_any_session(self):
+        path = self.dir / "first-session" / "tasks" / "b3.output"
+        path.parent.mkdir(parents=True)
+        path.write_text("hello\n\n[exited with code 0]\n")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            view.follow_shell(self.dir / "*" / "tasks" / "b3.output")
+        self.assertIn("hello", out.getvalue())
+
     def test_agent_stops_when_finished(self):
         path = self.dir / "agent-x.jsonl"
         path.write_text(

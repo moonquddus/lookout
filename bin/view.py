@@ -78,9 +78,17 @@ def kept_in_tab():
 
 class Tail:
     def __init__(self, path):
-        self.path, self.offset, self.seen, self.last = path, 0, False, b""
+        self.pattern, self.path, self.offset, self.seen, self.last = path, path, 0, False, b""
+
+    def resolve(self):
+        if self.seen or "*" not in str(self.pattern):
+            return
+        found = sorted(Path(self.pattern.anchor).glob(str(self.pattern.relative_to(self.pattern.anchor))))
+        if found:
+            self.path = found[0]
 
     def read(self):
+        self.resolve()
         if not self.path.exists():
             return b""
         self.seen = True
