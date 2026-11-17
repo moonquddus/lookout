@@ -5,6 +5,8 @@ A Herdr desktop mod. It shows each Claude Code subagent and each background shel
 > [!WARNING]
 > Lookout supports only Claude Code. Other harnesses and their subagents do not show.
 
+![A Claude Code session in the Agents list, with a background shell and two subagents under it](docs/screenshot.png)
+
 - Each subagent and each background shell gets its own herdr-core terminal. Its parent is the Claude Code terminal.
 - The terminal shows the live work: the prompt, the tool calls, the short tool results and the replies. A shell shows its output.
 - The list shows a spinner while the work runs. The row shows the task description.
