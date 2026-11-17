@@ -1,40 +1,51 @@
 # Lookout
 
-A herdr plugin. It shows each Claude Code subagent and each background shell in its own pane.
+A Herdr desktop mod. It shows each Claude Code subagent and each background shell in the Agents list.
 
-- The first pane opens to the right of the Claude Code pane. Other panes stack below it.
-- A subagent pane shows the prompt, the tool calls, the short tool results and the replies.
-- A shell pane shows the live output of the command.
-- A pane closes 5 seconds after its work stops.
+Lookout supports only Claude Code. Other harnesses and their subagents do not show.
 
-Foreground shells are not shown, because they stop before Claude Code continues.
+- Each subagent and each background shell gets its own herdr-core terminal. Its parent is the Claude Code terminal.
+- The terminal shows the live work: the prompt, the tool calls, the short tool results and the replies. A shell shows its output.
+- The list shows a spinner while the work runs. The row shows the task description.
+- Click a row to open it in a tab, like any other agent session.
+- A terminal closes 2 minutes after its work stops. When you keep it open in a tab, it stays until you close the tab.
+
+## Where sub-agents show
+
+Click the icon at the top right of the Agents list. Under **Show sub-agents**, select one:
+
+- **Under their parent**: an indented list below the parent agent.
+- **In their own section**: a **Subagents** section. Each row shows its parent.
 
 ## Install
 
-1. Link the plugin:
+```sh
+./install.sh
+```
 
-   ```sh
-   herdr plugin link /path/to/lookout
-   ```
+The script:
 
-2. Add these hooks to `~/.claude/settings.json`. Change the path to the plugin:
+1. Links `mod/` to `~/.config/herdr-app/mods/lookout`.
+2. Makes the `lookout` layout, a copy of `main` with this mod in place of the Agents list, and shows it.
+3. Adds the `SubagentStart` and `PostToolUse` hooks to `~/.claude/settings.json`.
 
-   ```json
-   {
-     "hooks": {
-       "SubagentStart": [{"hooks": [{"type": "command", "command": "python3 /path/to/lookout/plugin/hook.py", "timeout": 10}]}],
-       "SubagentStop": [{"hooks": [{"type": "command", "command": "python3 /path/to/lookout/plugin/hook.py", "timeout": 10}]}],
-       "PostToolUse": [{"matcher": "Bash|TaskStop|KillShell", "hooks": [{"type": "command", "command": "python3 /path/to/lookout/plugin/hook.py", "timeout": 10}]}],
-       "SessionStart": [{"hooks": [{"type": "command", "command": "python3 /path/to/lookout/plugin/hook.py", "timeout": 10}]}],
-       "SessionEnd": [{"hooks": [{"type": "command", "command": "python3 /path/to/lookout/plugin/hook.py", "timeout": 10}]}]
-     }
-   }
-   ```
+Restart Claude Code sessions to load the hooks. The hooks do nothing outside Herdr desktop.
 
-The hooks do nothing when Claude Code is not in a herdr pane.
+To remove it, run `./uninstall.sh`.
 
-## Test
+## Tests
 
 ```sh
 python3 test/test_lookout.py
 ```
+
+## Development
+
+```sh
+uvx ruff check .
+uvx ruff format .
+uvx --from shellcheck-py shellcheck install.sh uninstall.sh
+herdr-app check mod
+```
+
+CI runs the same checks, except `herdr-app check`, on each push and pull request.
