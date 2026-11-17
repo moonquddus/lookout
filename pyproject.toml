@@ -1,0 +1,13 @@
+[project]
+name = "lookout"
+version = "0.2.0"
+description = "Herdr desktop mod that shows Claude Code subagents and background shells in the Agents list"
+requires-python = ">=3.9"
+license = "MIT"
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
