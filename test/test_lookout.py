@@ -1,107 +1,79 @@
+import io
 import json
-import os
-import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "plugin"))
-import view  # noqa: E402
+sys.path.insert(0, str(Path(__file__).parent.parent / "bin"))
+
+import hook
+import view
 
 
-class Render(unittest.TestCase):
-    def test_prompt(self):
-        self.assertIn("do it", view.render({"type": "user", "message": {"content": "do it"}})[0])
+class HookTest(unittest.TestCase):
+    def test_slug_fits_core_names(self):
+        self.assertEqual(hook.slug("General Purpose!", 24), "general-purpose")
+        self.assertEqual(hook.slug("a" * 40, 24), "a" * 24)
+        self.assertEqual(hook.slug("???", 24), "task")
 
-    def test_tool_use_and_text(self):
-        entry = {"type": "assistant", "message": {"content": [
-            {"type": "thinking", "thinking": "hidden"},
-            {"type": "tool_use", "name": "Bash", "input": {"command": "ls /\nmore"}},
-            {"type": "text", "text": "done"},
-        ]}}
-        out = view.render(entry)
-        self.assertIn("Bash", out[0])
-        self.assertTrue(out[0].endswith("ls /"))
-        self.assertEqual(out[1], "done")
-        self.assertNotIn("hidden", "".join(out))
 
-    def test_tool_result_is_clipped(self):
-        entry = {"type": "user", "message": {"content": [
-            {"type": "tool_result", "content": "a\nb\nc\nd\ne"}]}}
-        out = view.render(entry)
-        self.assertEqual(len(out), 4)
-        self.assertIn("+2 lines", out[-1])
+class RenderTest(unittest.TestCase):
+    def test_prompt_tool_call_result_and_reply(self):
+        prompt = view.render({"type": "user", "message": {"content": "find bugs"}})
+        call = view.render(
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "tool_use", "name": "Bash", "input": {"command": "ls\nmore"}}]},
+            }
+        )
+        result = view.render(
+            {"type": "user", "message": {"content": [{"type": "tool_result", "content": "a\nb\nc\nd"}]}}
+        )
+        reply = view.render({"type": "assistant", "message": {"content": [{"type": "text", "text": "done"}]}})
+        self.assertIn("find bugs", prompt[0])
+        self.assertIn("Bash", call[0])
+        self.assertIn("ls", call[0])
+        self.assertNotIn("more", call[0])
+        self.assertEqual(len(result), 4)
+        self.assertEqual(reply, ["done", ""])
 
-    def test_other_entries_are_hidden(self):
+    def test_ignores_other_entries(self):
         self.assertEqual(view.render({"type": "attachment"}), [])
 
 
-class Hook(unittest.TestCase):
+class FollowTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.record = self.tmp / "record"
-        self.record.touch()
-        self.env = os.environ | {
-            "HERDR_ENV": "1", "HERDR_PANE_ID": "w1:p0", "HERDR_WORKSPACE_ID": "w1",
-            "HERDR_BIN_PATH": str(ROOT / "test/stub-herdr"), "STUB_RECORD": str(self.record),
-            "LOOKOUT_STATE_DIR": str(self.tmp / "state"), "CLAUDE_CODE_TMPDIR": str(self.tmp),
-        }
+        view.POLL_SECONDS = 0
+        self.dir = Path(tempfile.mkdtemp())
 
-    def hook(self, event, live=""):
-        event = {"session_id": "s1", "transcript_path": "/p/proj/s1.jsonl"} | event
-        subprocess.run([sys.executable, ROOT / "plugin/hook.py"], input=json.dumps(event), text=True,
-                       env=self.env | {"STUB_LIVE": live}, check=True)
-        return self.record.read_text().splitlines()
+    def test_shell_stops_at_exit_mark(self):
+        path = self.dir / "b1.output"
+        path.write_text("hello\n\n[exited with code 0]\n")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            view.follow_shell(path)
+        self.assertIn("hello", out.getvalue())
 
-    def test_first_view_splits_caller_right(self):
-        calls = self.hook({"hook_event_name": "SubagentStart", "agent_id": "a1", "agent_type": "Explore"})
-        opened = calls[1]
-        self.assertIn("--target-pane w1:p0 --direction right", opened)
-        self.assertIn("LOOKOUT_PATH=/p/proj/s1/subagents/agent-a1.jsonl", opened)
-        self.assertIn("pane rename w1:p2 🤖 Explore", calls[2])
+    def test_shell_stops_when_file_goes(self):
+        path = self.dir / "b2.output"
+        path.write_text("hello\n")
+        tail = view.Tail(path)
+        tail.read()
+        path.unlink()
+        self.assertTrue(tail.gone())
 
-    def test_next_view_stacks_below_live_view(self):
-        self.hook({"hook_event_name": "SubagentStart", "agent_id": "a1"})
-        calls = self.hook({"hook_event_name": "SubagentStart", "agent_id": "a2"}, live='{"pane_id":"w1:p2"}')
-        self.assertIn("--target-pane w1:p2 --direction down", calls[4])
-
-    def test_closed_views_are_forgotten(self):
-        self.hook({"hook_event_name": "SubagentStart", "agent_id": "a1"})
-        calls = self.hook({"hook_event_name": "SubagentStart", "agent_id": "a2"})
-        self.assertIn("--target-pane w1:p0 --direction right", calls[4])
-
-    def test_background_shell(self):
-        tasks = self.tmp / f"claude-{os.getuid()}/proj/s1/tasks"
-        tasks.mkdir(parents=True)
-        calls = self.hook({"hook_event_name": "PostToolUse", "tool_name": "Bash",
-                           "tool_input": {"command": "npm test", "run_in_background": True},
-                           "tool_response": {"backgroundTaskId": "b1"}})
-        self.assertIn(f"LOOKOUT_PATH={tasks}/b1.output", calls[1])
-        self.assertIn("pane rename w1:p2 $ npm test", calls[2])
-
-    def test_foreground_shell_is_ignored(self):
-        self.assertEqual(self.hook({"hook_event_name": "PostToolUse", "tool_name": "Bash",
-                                    "tool_input": {"command": "ls"}, "tool_response": {}}), [])
-
-    def test_stop_marks_done(self):
-        self.hook({"hook_event_name": "SubagentStop", "agent_id": "a1"})
-        self.hook({"hook_event_name": "PostToolUse", "tool_name": "TaskStop", "tool_input": {"task_id": "b1"}})
-        self.assertTrue((self.tmp / "state/done/a1").exists())
-        self.assertTrue((self.tmp / "state/done/b1").exists())
-
-    def test_outside_herdr_does_nothing(self):
-        self.env.pop("HERDR_ENV")
-        self.assertEqual(self.hook({"hook_event_name": "SubagentStart", "agent_id": "a1"}), [])
-
-
-class Follow(unittest.TestCase):
-    def test_shell_stops_at_exit_line(self):
-        path = Path(tempfile.mkdtemp()) / "b1.output"
-        path.write_text("tick\n\n[exited with code 0]\n")
-        os.environ |= {"LOOKOUT_DONE": "/nonexistent", "LOOKOUT_SESSION_DONE": "/nonexistent"}
-        view.follow(path, "shell")
+    def test_agent_stops_when_finished(self):
+        path = self.dir / "agent-x.jsonl"
+        path.write_text(
+            json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "hi"}]}}) + "\n"
+        )
+        (self.dir / "agent-x.meta.json").write_text(json.dumps({"finished": True}))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            view.follow_agent(path)
+        self.assertIn("hi", out.getvalue())
 
 
 if __name__ == "__main__":
