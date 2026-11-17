@@ -28,11 +28,17 @@ The script:
 
 1. Links `mod/` to `~/.config/herdr-app/mods/lookout`.
 2. Makes the `lookout` layout, a copy of `main` with this mod in place of the Agents list, and shows it.
-3. Adds the `SubagentStart` and `PostToolUse` hooks to `~/.claude/settings.json`.
+3. Adds the `SubagentStart` and `PostToolUse` hooks to `settings.json` in your Claude Code profile directory.
+
+To use another Claude Code profile directory, pass `--claude-dir`. The default is `$CLAUDE_CONFIG_DIR`, else `~/.claude`.
+
+```sh
+./install.sh --claude-dir ~/.claude-work
+```
 
 Restart Claude Code sessions to load the hooks. The hooks do nothing outside Herdr desktop.
 
-To remove it, run `./uninstall.sh`.
+To remove it, run `./uninstall.sh`. It takes the same `--claude-dir` argument.
 
 ## Tests
 
