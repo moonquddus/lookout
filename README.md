@@ -47,5 +47,3 @@ uvx ruff format .
 uvx --from shellcheck-py shellcheck install.sh uninstall.sh
 herdr-app check mod
 ```
-
-CI runs the same checks, except `herdr-app check`, on each push and pull request.
