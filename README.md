@@ -10,8 +10,8 @@ A Herdr desktop mod. It shows each Claude Code subagent and each background shel
 - Each subagent and each background shell gets its own herdr-core terminal. Its parent is the Claude Code terminal.
 - The terminal shows the live work: the prompt, the tool calls, the short tool results and the replies. A shell shows its output.
 - The list shows a spinner while the work runs. The row shows the task description.
-- Click a row to open it in a tab, like any other agent session.
-- A terminal closes 2 minutes after its work stops. When you keep it open in a tab, it stays until you close the tab.
+- Click a row to peek at it over the current tab. To keep it in its own tab, click **keep** in the peek.
+- A terminal closes 2 minutes after its work stops. When you keep it in a tab, it stays until you close the tab.
 
 ## Where sub-agents show
 

@@ -186,26 +186,9 @@ export default class Agents extends View {
         .when(p.id === placeOf().id, (el) => el.child(svg("mods/workspace-chrome/check.svg").size(14).flex_none().text_color(t.foreground)))));
   }
 
-  // A sub-agent without a pane gets its own tab, like any other agent session.
+  // A sub-agent without a pane gets a peek, so no tab keeps it alive after it finishes.
   open(k) {
-    if (this.listed.has(k.address)) run("pane.focus", { terminal: k.address });
-    else {
-      run("terminal.keep", { terminal: k.address, place: "tab" });
-      this.naming = { address: k.address, name: subName(k) };
-    }
-  }
-
-  // terminal.keep finishes in the background: name the tab once its pane shows up.
-  nameKeptTab(all) {
-    if (!this.naming) return;
-    const pane = all.find((p) => p.terminal === this.naming.address);
-    if (!pane) return;
-    run("tab.rename", { id: pane.tab, name: this.naming.name });
-    this.naming = null;
-  }
-
-  peek(addr) {
-    run("terminal.peek", { terminal: addr });
+    run(this.listed.has(k.address) ? "pane.focus" : "terminal.peek", { terminal: k.address });
   }
 
   // Live sub-agents of `addr`, depth first, each with the tree lines in front of it.
@@ -324,7 +307,6 @@ export default class Agents extends View {
     // otherwise read the same.
     // Read the pane snapshot once: every host read copies the whole list into JS.
     const allPanes = panes();
-    this.nameKeptTab(allPanes);
     const leads = leadPanes(allPanes);
     const tabs = new Map(spaces().flatMap(s => s.tabs).map(tab => [tab.id, tab]));
     const labels = new Map(list.map(a => {
