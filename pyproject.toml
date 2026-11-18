@@ -1,6 +1,6 @@
 [project]
 name = "lookout"
-version = "1.0.0"
+version = "1.1.0"
 description = "Herdr desktop mod that shows Claude Code subagents and background shells in the Agents list"
 requires-python = ">=3.9"
 license = "MIT"
